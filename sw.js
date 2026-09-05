@@ -1,6 +1,6 @@
 // Simple app-shell cache so the app opens offline from the home screen.
 // Bump CACHE when you change files, or the old version keeps being served.
-const CACHE = 'chore-quest-v1';
+const CACHE = 'chore-quest-v2';
 const SHELL = [
   './',
   './index.html',
@@ -18,6 +18,8 @@ const SHELL = [
   './js/parent.js',
   './js/games.js',
   './js/chat.js',
+  './js/cloud.js',
+  './js/firebase-config.js',
 ];
 
 self.addEventListener('install', (e) => {

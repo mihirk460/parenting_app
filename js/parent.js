@@ -7,6 +7,7 @@ import {
 import { occurrencesOn, kidStats, REPEAT_LABEL } from './tasks.js';
 import { esc, mount, on, toast, modal, tabbar, statusPill, prettyDate, session, go } from './ui.js';
 import { mountCalendar } from './calendar.js';
+import * as cloud from './cloud.js';
 
 const AVATARS = ['🦊', '🐼', '🦄', '🐸', '🐯', '🐙', '🦖', '🐨', '🐵', '🦋', '🐶', '🐱'];
 
@@ -394,10 +395,17 @@ function settingsPage() {
       <textarea id="dump" class="hidden" readonly></textarea>
     </div>
     <div class="card">
+      <h3>Account</h3>
+      ${cloud.enabled && cloud.currentUser()
+        ? `<p class="muted">Signed in as ${esc(cloud.currentUser().email)}. Data syncs to the cloud.</p><button class="btn neutral block" data-signout>Sign out</button>`
+        : '<p class="muted">Cloud sync is off. Data lives only in this browser. See README to turn it on.</p>'}
+    </div>
+    <div class="card">
       <button class="btn bad block" data-reset>Reset everything</button>
     </div>
   `));
   bindCommon(root, settingsPage);
+  on(root, 'click', '[data-signout]', () => cloud.signOut());
   root.querySelector('#pin').addEventListener('submit', (e) => {
     e.preventDefault();
     updateSettings({ pin: new FormData(e.target).get('pin') });

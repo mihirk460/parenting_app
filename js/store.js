@@ -1,8 +1,6 @@
 // All app data lives in one localStorage object. Keep it plain JSON so
 // export/import and a future backend sync stay trivial.
 
-const KEY = 'chore-quest-v1';
-
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export function toDateStr(d) {
@@ -51,23 +49,38 @@ function seed() {
   };
 }
 
-let state = load();
+let state;
+let key;        // localStorage key; per account when signed in
+let saveHook;   // called after every save (cloud sync)
+
+// Call once at startup, before any view renders.
+export function initStore(storageKey) {
+  key = storageKey;
+  state = load();
+}
+export function setSaveHook(fn) { saveHook = fn; }
 
 function load() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     if (raw) return JSON.parse(raw);
   } catch (e) {
     console.warn('Could not read saved data', e);
   }
   const s = seed();
-  localStorage.setItem(KEY, JSON.stringify(s));
+  localStorage.setItem(key, JSON.stringify(s));
   return s;
 }
 
 export const S = () => state;
 export function save() {
-  localStorage.setItem(KEY, JSON.stringify(state));
+  localStorage.setItem(key, JSON.stringify(state));
+  saveHook?.(state);
+}
+// Replace state with a copy from the cloud without echoing it back.
+export function adoptRemote(data) {
+  state = data;
+  localStorage.setItem(key, JSON.stringify(state));
 }
 export function exportJSON() {
   return JSON.stringify(state, null, 2);
