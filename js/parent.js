@@ -7,6 +7,7 @@ import {
 import { occurrencesOn, kidStats, REPEAT_LABEL } from './tasks.js';
 import { esc, mount, on, toast, modal, tabbar, statusPill, prettyDate, session, go } from './ui.js';
 import { mountCalendar } from './calendar.js';
+import { provider, DEFAULT_OPENROUTER_MODEL } from './chat.js';
 import * as cloud from './cloud.js';
 
 const AVATARS = ['🦊', '🐼', '🦄', '🐸', '🐯', '🐙', '🦖', '🐨', '🐵', '🦋', '🐶', '🐱'];
@@ -358,6 +359,7 @@ function rewardsPage() {
 // ---- Settings ----
 function settingsPage() {
   const s = S().settings;
+  const prov = provider();
   const root = mount(shell('Settings', `
     <div class="card">
       <h3>Parent PIN</h3>
@@ -368,10 +370,23 @@ function settingsPage() {
     </div>
     <div class="card">
       <h3>Buddy chat bot</h3>
-      <p class="muted">Without a key, Buddy only knows a few stories and jokes. Paste an Anthropic API key to let Buddy answer real questions. The key is stored only on this device.</p>
-      <form id="key" class="field-row">
-        <input name="apiKey" type="password" placeholder="sk-ant-…" value="${esc(s.apiKey)}" autocomplete="off">
-        <button class="btn" type="submit" style="flex:0 0 auto">Save</button>
+      <p class="muted">Pick where Buddy's answers come from. Keys are saved with your family data, never shared with anyone else.</p>
+      <label class="field"><span>Brain</span>
+        <select id="provider">
+          <option value="local" ${prov === 'local' ? 'selected' : ''}>Built-in stories and jokes only (free, offline)</option>
+          <option value="openrouter" ${prov === 'openrouter' ? 'selected' : ''}>OpenRouter (free models available)</option>
+          <option value="anthropic" ${prov === 'anthropic' ? 'selected' : ''}>Anthropic Claude (paid API key)</option>
+        </select>
+      </label>
+      <form id="key-openrouter" class="${prov === 'openrouter' ? '' : 'hidden'}">
+        <label class="field"><span>OpenRouter API key</span><input name="openrouterKey" type="password" placeholder="sk-or-…" value="${esc(s.openrouterKey || '')}" autocomplete="off"></label>
+        <label class="field"><span>Model</span><input name="openrouterModel" type="text" placeholder="${DEFAULT_OPENROUTER_MODEL}" value="${esc(s.openrouterModel || '')}" autocomplete="off"></label>
+        <p class="muted">Free models end in <code>:free</code>. Browse them at openrouter.ai/models (filter: Free). Leave blank for the default.</p>
+        <button class="btn block" type="submit">Save</button>
+      </form>
+      <form id="key-anthropic" class="${prov === 'anthropic' ? '' : 'hidden'}">
+        <label class="field"><span>Anthropic API key</span><input name="apiKey" type="password" placeholder="sk-ant-…" value="${esc(s.apiKey)}" autocomplete="off"></label>
+        <button class="btn block" type="submit">Save</button>
       </form>
       <label class="row" style="margin-top:10px"><input type="checkbox" id="voice" ${s.voice ? 'checked' : ''}> Read Buddy's replies aloud</label>
     </div>
@@ -412,7 +427,14 @@ function settingsPage() {
     e.target.reset();
     toast('PIN changed');
   });
-  root.querySelector('#key').addEventListener('submit', (e) => {
+  root.querySelector('#provider').onchange = (e) => { updateSettings({ provider: e.target.value }); settingsPage(); };
+  root.querySelector('#key-openrouter').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    updateSettings({ openrouterKey: fd.get('openrouterKey').trim(), openrouterModel: fd.get('openrouterModel').trim() });
+    toast('Saved');
+  });
+  root.querySelector('#key-anthropic').addEventListener('submit', (e) => {
     e.preventDefault();
     updateSettings({ apiKey: new FormData(e.target).get('apiKey').trim() });
     toast('Saved');

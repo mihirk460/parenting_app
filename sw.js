@@ -1,6 +1,6 @@
 // Simple app-shell cache so the app opens offline from the home screen.
 // Bump CACHE when you change files, or the old version keeps being served.
-const CACHE = 'chore-quest-v2';
+const CACHE = 'chore-quest-v3';
 const SHELL = [
   './',
   './index.html',

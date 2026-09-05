@@ -33,7 +33,7 @@ function seed() {
   const t = today();
   return {
     version: 1,
-    settings: { pin: '0000', apiKey: '', gameDailyCap: 20, voice: true },
+    settings: { pin: '0000', provider: 'local', apiKey: '', openrouterKey: '', openrouterModel: '', gameDailyCap: 20, voice: true },
     kids: [{ id: kidId, name: 'Sam', avatar: '🦊', points: 12 }],
     tasks: [
       { id: uid(), kidId, title: 'Make your bed', points: 2, start: t, end: null, repeat: 'daily' },

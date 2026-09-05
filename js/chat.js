@@ -1,6 +1,6 @@
 // "Buddy": a voice chat bot for the kid. Talks through the browser's speech
-// APIs. The brain is Claude when a parent has saved an API key in Settings,
-// otherwise a small built-in set of stories/jokes so the page still works.
+// APIs. The brain is chosen in parent Settings: OpenRouter (free models),
+// Claude, or a small built-in set of stories/jokes so the page still works.
 import { S } from './store.js';
 import { esc, on } from './ui.js';
 
@@ -25,6 +25,18 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 function systemPrompt(kid) {
   return `You are Buddy, a friendly voice assistant for a child named ${kid.name}. Keep answers short (2-4 sentences) because they are read aloud, unless the child asks for a story, then tell a fun 6-10 sentence story with a happy ending. Use simple words a young child understands. Be warm, encouraging and playful. Never discuss violence, scary, adult or unsafe topics; if asked, gently say that is a question for a grown-up and offer something fun instead. Never ask for or repeat personal details like address, school or phone numbers. Do not use emojis or markdown.`;
+}
+
+// Which brain is active. Old saved data has no `provider` field.
+export function provider() {
+  const s = S().settings;
+  if (s.provider) return s.provider;
+  return s.apiKey ? 'anthropic' : 'local';
+}
+export const DEFAULT_OPENROUTER_MODEL = 'nvidia/nemotron-nano-9b-v2:free';
+
+function chatMessages(history) {
+  return history.slice(-10).map((m) => ({ role: m.role, content: m.text }));
 }
 
 function localBrain(text) {
@@ -52,7 +64,7 @@ async function claudeBrain(kid, history) {
       fallbacks: 'default',
       output_config: { effort: 'low' },
       system: systemPrompt(kid),
-      messages: history.slice(-10).map((m) => ({ role: m.role, content: m.text })),
+      messages: chatMessages(history),
     }),
   });
   if (!res.ok) {
@@ -64,12 +76,37 @@ async function claudeBrain(kid, history) {
   return data.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
 }
 
+// OpenRouter: OpenAI-compatible, allows browser calls, has free models.
+async function openrouterBrain(kid, history) {
+  const s = S().settings;
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${s.openrouterKey}`,
+      'HTTP-Referer': location.origin,
+      'X-Title': 'Chore Quest',
+    },
+    body: JSON.stringify({
+      model: s.openrouterModel || DEFAULT_OPENROUTER_MODEL,
+      max_tokens: 600,
+      messages: [{ role: 'system', content: systemPrompt(kid) }, ...chatMessages(history)],
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(data.error?.message || `Request failed (${res.status})`);
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error('The model sent back an empty reply.');
+  return text;
+}
+
 export function chatView(container, kid) {
   const history = [];
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const canListen = Boolean(SR);
   const canSpeak = 'speechSynthesis' in window;
-  const hasKey = Boolean(S().settings.apiKey);
+  const brain = provider();
+  const hasKey = brain !== 'local';
 
   container.innerHTML = `
     <div class="card" style="text-align:center">
@@ -123,7 +160,9 @@ export function chatView(container, kid) {
     history.pop(); // placeholder is not part of the conversation
     let reply;
     try {
-      reply = hasKey ? await claudeBrain(kid, history) : localBrain(text);
+      reply = brain === 'openrouter' ? await openrouterBrain(kid, history)
+        : brain === 'anthropic' ? await claudeBrain(kid, history)
+        : localBrain(text);
     } catch (e) {
       reply = `Oops, my brain is not working right now. (${e.message})`;
     }
