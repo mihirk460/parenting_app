@@ -1,0 +1,14 @@
+{
+  "name": "Chore Quest",
+  "short_name": "Chore Quest",
+  "description": "Tasks, points and rewards for kids and parents.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f5fb",
+  "theme_color": "#5b5bd6",
+  "icons": [
+    { "src": "./icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
